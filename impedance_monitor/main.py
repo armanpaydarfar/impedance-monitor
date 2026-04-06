@@ -129,13 +129,6 @@ def _run_check(sdk_path_arg: str | None) -> int:
     except ImportError:
         _fail("PySide6:", "not importable — run: pip install PySide6")
 
-    # numpy
-    try:
-        import numpy
-        _ok("numpy:", numpy.__version__)
-    except ImportError:
-        _fail("numpy:", "not importable — run: pip install numpy")
-
     if all_ok:
         print("\nAll checks passed. Run: impedance-monitor --mode live")
     else:

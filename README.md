@@ -6,14 +6,24 @@ in real time using a PySide6 GUI with a colour-coded head topomap.
 ## Requirements
 
 - Linux
-- `conda` environment `lsl` (Python 3.12)
+- Python 3.12
+- PySide6 >= 6.7
 - `libeego-SDK.so` from ANT Neuro (not managed by pip/conda — see Installation)
 - udev rule `90-eego.rules` installed for unprivileged USB access
 
 ## Installation
 
+Create and activate a Python 3.12 environment with the required dependencies. Using
+conda:
+
 ```bash
-conda activate lsl
+conda env create -f environment.yml
+conda activate impedance-monitor
+```
+
+Then run the installer from the project root:
+
+```bash
 cd /path/to/impedance-monitor
 ./install.sh
 ```
