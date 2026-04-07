@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # impedance-monitor installer
-# Run from the repo root with the target conda environment already active:
-#   conda activate lsl
+# Activate any Python 3.10+ environment, then run this script from the repo root:
+#   conda activate <your-env>   (or: source .venv/bin/activate, etc.)
 #   ./install.sh
 
 set -euo pipefail
@@ -25,8 +25,18 @@ ERRORS=0
 echo "--- Checking Python environment ---"
 PYTHON_BIN="$(command -v python 2>/dev/null || true)"
 if [ -z "$PYTHON_BIN" ]; then
-    _fail "python not found. Activate the conda environment first:"
-    _info "  conda activate lsl"
+    _fail "No Python interpreter found on PATH."
+    _info ""
+    _info "Activate or create a Python 3.10+ environment, then re-run:"
+    _info "  conda activate <your-env>"
+    _info "  ./install.sh"
+    _info ""
+    _info "To create a new environment:"
+    _info "  conda create -n <your-env> python=3.12"
+    _info "  conda activate <your-env>"
+    _info "  ./install.sh"
+    _info ""
+    _info "Don't have conda? Install Miniconda: https://docs.conda.io/en/latest/miniconda.html"
     exit 1
 fi
 
@@ -34,25 +44,19 @@ PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}
 PYTHON_MAJOR="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info.major)')"
 PYTHON_MINOR="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info.minor)')"
 
-if [ "$PYTHON_MAJOR" -lt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 12 ]; }; then
-    _fail "Python 3.12+ required, found $PYTHON_VERSION."
-    _info "Activate the correct environment: conda activate lsl"
+if [ "$PYTHON_MAJOR" -lt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
+    _fail "Python 3.10+ required, found $PYTHON_VERSION at $PYTHON_BIN."
+    _info ""
+    _info "Activate or create a Python 3.10+ environment, then re-run:"
+    _info "  conda create -n <your-env> python=3.12"
+    _info "  conda activate <your-env>"
+    _info "  ./install.sh"
     exit 1
 fi
-_ok "Python $PYTHON_VERSION ($PYTHON_BIN)"
 
-# Warn if not in the expected conda environment
+_ok "Python $PYTHON_VERSION ($PYTHON_BIN)"
 CONDA_ENV="${CONDA_DEFAULT_ENV:-}"
-if [ -z "$CONDA_ENV" ]; then
-    _warn "No conda environment appears to be active. Expected: lsl"
-    _info "Run: conda activate lsl"
-elif [ "$CONDA_ENV" != "lsl" ]; then
-    _warn "Active conda environment is '$CONDA_ENV', expected 'lsl'."
-    _info "Run: conda activate lsl  (then re-run this script)"
-    _info "Continuing anyway — if dependencies fail, activate the correct environment."
-else
-    _ok "conda environment: $CONDA_ENV"
-fi
+[ -n "$CONDA_ENV" ] && _info "conda environment: $CONDA_ENV"
 echo ""
 
 # --------------------------------------------------------------------------
@@ -124,8 +128,8 @@ fi
 echo ""
 
 # --------------------------------------------------------------------------
-# 4. Install Python package and all dependencies
-#    pip install -e . resolves PySide6 and numpy from pyproject.toml
+# 4. Install Python package and dependencies
+#    pip install -e . resolves PySide6 from pyproject.toml
 # --------------------------------------------------------------------------
 echo "--- Installing Python package and dependencies ---"
 if "$PYTHON_BIN" -m pip install -e "$SCRIPT_DIR"; then
@@ -133,8 +137,9 @@ if "$PYTHON_BIN" -m pip install -e "$SCRIPT_DIR"; then
 else
     _fail "pip install failed. Check the output above."
     _info "Common causes:"
-    _info "  - Wrong conda environment active (run: conda activate lsl)"
-    _info "  - No internet access for downloading PySide6 / numpy"
+    _info "  - Wrong Python active — check 'which python' and ensure your environment is activated"
+    _info "  - No internet access (required to download PySide6 if not already installed)"
+    _info "  - PySide6 version conflict — try: pip install --upgrade PySide6"
     exit 1
 fi
 echo ""
@@ -146,7 +151,7 @@ echo "--- Verifying entry point ---"
 ENTRY_POINT="$(command -v impedance-monitor 2>/dev/null || true)"
 if [ -z "$ENTRY_POINT" ]; then
     _fail "impedance-monitor command not found after install."
-    _info "The conda environment's bin directory may not be on PATH."
+    _info "The environment's bin directory may not be on PATH yet."
     _info "Try: hash -r  or open a new terminal, then run: impedance-monitor --check"
     ERRORS=$((ERRORS + 1))
 else

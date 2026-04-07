@@ -6,33 +6,45 @@ in real time using a PySide6 GUI with a colour-coded head topomap.
 ## Requirements
 
 - Linux
-- Python 3.12
-- PySide6 >= 6.7
-- `libeego-SDK.so` from ANT Neuro (not managed by pip/conda — see Installation)
+- Python 3.10+
+- `libeego-SDK.so` from ANT Neuro (not managed by pip — see Installation)
 - udev rule `90-eego.rules` installed for unprivileged USB access
+
+PySide6 is the only pip dependency and is installed automatically.
 
 ## Installation
 
-Create and activate a Python 3.12 environment with the required dependencies. Using
-conda:
+Activate a Python 3.10+ environment, then run the installer from the repo root:
 
 ```bash
-conda env create -f environment.yml
-conda activate impedance-monitor
-```
-
-Then run the installer from the project root:
-
-```bash
+conda activate <your-env>   # or: source .venv/bin/activate, etc.
 cd /path/to/impedance-monitor
 ./install.sh
 ```
 
-`install.sh` will:
-1. Locate `libeego-SDK.so` (fails clearly if not found)
-2. Install the udev rule (requires `sudo`)
-3. Run `pip install -e .`
-4. Verify the setup with `impedance-monitor --check`
+`install.sh` installs into whatever Python is currently active — any environment
+type, any name. It will:
+
+1. Verify Python 3.10+ is active (fails with instructions if not)
+2. Locate `libeego-SDK.so` (fails with instructions if not found)
+3. Install the udev rule for unprivileged USB access (requires `sudo`)
+4. Run `pip install -e .` — installs PySide6 and registers the `impedance-monitor` command
+5. Verify the full setup with `impedance-monitor --check`
+
+**Don't have a Python 3.10+ environment?** Create one:
+
+```bash
+conda create -n <your-env> python=3.12
+conda activate <your-env>
+./install.sh
+```
+
+**Don't have conda?** Install
+[Miniconda](https://docs.conda.io/en/latest/miniconda.html) first, then follow
+the steps above.
+
+**Upgrading?** Re-running `./install.sh` is safe — it will upgrade PySide6 if the
+installed version no longer satisfies the requirement and reinstall the package.
 
 ## Usage
 

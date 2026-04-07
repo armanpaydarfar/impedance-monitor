@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "impedance-monitor"
 version = "0.1.0"
 description = "Standalone ANT Neuro electrode impedance monitor"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "PySide6>=6.7",
 ]
