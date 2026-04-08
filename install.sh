@@ -78,18 +78,30 @@ for p in "${SDK_PATHS[@]}"; do
 done
 
 if [ -z "$SDK_FOUND" ]; then
-    _fail "libeego-SDK.so not found. Paths checked:"
+    _warn "libeego-SDK.so not found in default locations:"
     for p in "${SDK_PATHS[@]}"; do
         [ -n "$p" ] && _info "  $p"
     done
-    _info ""
-    _info "To fix: place libeego-SDK.so at one of the paths above, or set EEGO_SDK_PATH:"
-    _info "  export EEGO_SDK_PATH=/path/to/libeego-SDK.so"
-    _info "  ./install.sh"
-    _info ""
-    _info "The SDK is obtained from ANT Neuro or from a lab zip archive."
-    _info "It is not distributed with this repository."
-    exit 1
+    echo ""
+    if [ -t 0 ]; then
+        # Running interactively — ask the user
+        read -rp "       Enter full path to libeego-SDK.so (or press Enter to abort): " USER_SDK_PATH
+        if [ -n "$USER_SDK_PATH" ] && [ -f "$USER_SDK_PATH" ]; then
+            SDK_FOUND="$USER_SDK_PATH"
+        else
+            [ -n "$USER_SDK_PATH" ] && _fail "File not found: $USER_SDK_PATH"
+            _info "The SDK is obtained from ANT Neuro or from a lab zip archive."
+            _info "It is not distributed with this repository."
+            exit 1
+        fi
+    else
+        # Non-interactive (piped/CI) — fail with instructions
+        _fail "Cannot prompt for SDK path in non-interactive mode."
+        _info "Set EEGO_SDK_PATH before running:"
+        _info "  export EEGO_SDK_PATH=/path/to/libeego-SDK.so"
+        _info "  ./install.sh"
+        exit 1
+    fi
 fi
 _ok "SDK found: $SDK_FOUND"
 echo ""
