@@ -90,15 +90,32 @@ def check_sdk() -> None:
             print()
             return
 
-    _fail("SDK:", f"{SDK_LIB} not found")
+    _warn("SDK:", f"{SDK_LIB} not found in default locations")
     _info("Paths checked:")
     for p in candidates:
         _info(f"  {p}")
     _info("")
-    _info(f"Obtain {SDK_LIB} from ANT Neuro, then either:")
-    _info(f"  - Place it at one of the paths above, or")
-    _info(f"  - Set EEGO_SDK_PATH=/path/to/{SDK_LIB} and re-run")
-    sys.exit(1)
+
+    if sys.stdin.isatty():
+        user_path = input(f"       Enter full path to {SDK_LIB} (or press Enter to abort): ").strip()
+        if user_path and Path(user_path).is_file():
+            _ok("SDK found:", user_path)
+            print()
+            return
+        if user_path:
+            _fail("SDK:", f"File not found: {user_path}")
+        _info(f"Obtain {SDK_LIB} from ANT Neuro or from a lab zip archive.")
+        _info("It is not distributed with this repository.")
+        sys.exit(1)
+    else:
+        _fail("SDK:", "cannot prompt in non-interactive mode")
+        _info("Set EEGO_SDK_PATH before running:")
+        if sys.platform == "win32":
+            _info(f"  set EEGO_SDK_PATH=C:\\path\\to\\{SDK_LIB}")
+        else:
+            _info(f"  export EEGO_SDK_PATH=/path/to/{SDK_LIB}")
+        _info("  python install.py")
+        sys.exit(1)
 
 
 # --------------------------------------------------------------------------
