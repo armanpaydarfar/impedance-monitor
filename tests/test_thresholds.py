@@ -12,16 +12,16 @@ from impedance_monitor.processing.thresholds import (
 
 
 class TestClassify:
-    def test_open_below_floor(self):
+    def test_short_at_zero(self):
         r = classify("GND", 0.0)
-        assert r.status == Status.OPEN
+        assert r.status == Status.SHORT
 
-    def test_open_just_below_floor(self):
+    def test_short_just_below_floor(self):
         r = classify("GND", OPEN_CIRCUIT_FLOOR_OHM - 1)
-        assert r.status == Status.OPEN
+        assert r.status == Status.SHORT
 
     def test_good_at_floor(self):
-        # Exactly 100 Ω: not open (< 100 is open), so GOOD
+        # Exactly 100 Ω: not short (< 100 is short), so GOOD
         r = classify("Fp1", OPEN_CIRCUIT_FLOOR_OHM)
         assert r.status == Status.GOOD
 
@@ -34,7 +34,7 @@ class TestClassify:
         assert r.status == Status.GOOD
 
     def test_marginal_at_good_threshold(self):
-        # Exactly 5000 Ω → MARGINAL (boundary inclusive of higher band)
+        # Exactly 10000 Ω → MARGINAL (boundary inclusive of higher band)
         r = classify("Cz", GOOD_THRESHOLD_OHM)
         assert r.status == Status.MARGINAL
 
@@ -47,7 +47,7 @@ class TestClassify:
         assert r.status == Status.MARGINAL
 
     def test_bad_at_marginal_threshold(self):
-        # Exactly 10000 Ω → BAD (boundary inclusive of higher band)
+        # Exactly 20000 Ω → BAD (boundary inclusive of higher band)
         r = classify("Cz", MARGINAL_THRESHOLD_OHM)
         assert r.status == Status.BAD
 
@@ -59,13 +59,17 @@ class TestClassify:
         r = classify("Cz", OPEN_CIRCUIT_CEILING_OHM - 1)
         assert r.status == Status.BAD
 
-    def test_open_at_ceiling(self):
-        # SDK sentinel boundary — exactly 1 MΩ is OPEN, not BAD
+    def test_error_at_ceiling(self):
+        # ≥ 1 MΩ but not the known sentinel → ERROR
         r = classify("Cz", OPEN_CIRCUIT_CEILING_OHM)
-        assert r.status == Status.OPEN
+        assert r.status == Status.ERROR
+
+    def test_error_large_non_sentinel(self):
+        r = classify("Cz", 2_000_000.0)
+        assert r.status == Status.ERROR
 
     def test_open_sdk_sentinel(self):
-        # 0xFFFFFFFF — the value the SDK returns for ungelled/no-contact electrodes
+        # 0xFFFFFFFF — SDK no-contact sentinel for ungelled / not-placed electrodes
         r = classify("FP1", 4_294_967_295.0)
         assert r.status == Status.OPEN
 
@@ -88,12 +92,19 @@ class TestClassify:
 
 class TestClassifyAll:
     def test_classifies_all_channels(self):
-        readings = {"Fp1": 1000.0, "GND": 50.0, "Cz": 15000.0, "O1": 25000.0}
+        readings = {
+            "Fp1": 1000.0,
+            "GND": 50.0,
+            "Cz": 15000.0,
+            "O1": 25000.0,
+            "Fz": 4_294_967_295.0,
+        }
         result = classify_all(readings)
         assert result["Fp1"].status == Status.GOOD
-        assert result["GND"].status == Status.OPEN
+        assert result["GND"].status == Status.SHORT
         assert result["Cz"].status == Status.MARGINAL
         assert result["O1"].status == Status.BAD
+        assert result["Fz"].status == Status.OPEN
 
     def test_empty_dict(self):
         assert classify_all({}) == {}

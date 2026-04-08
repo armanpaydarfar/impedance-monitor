@@ -8,8 +8,8 @@ mapped to pixel coordinates as:
 where centre and radius are recomputed from widget dimensions on every paintEvent.
 
 Each electrode is drawn as a colour-coded circle with the channel label centred
-inside and the kΩ value drawn just below the circle. OPEN-circuit electrodes are
-shown in white with no value text.
+inside and a value drawn just below the circle. Impedance statuses show a kΩ
+value; non-impedance statuses (Short, Open, Error) show their status label.
 """
 
 import math
@@ -22,11 +22,13 @@ from ..processing.thresholds import ImpedanceReading, Status
 
 # Colours per status
 _STATUS_COLOURS: dict[Status | None, str] = {
-    Status.GOOD:     "#2ecc71",   # green  — < 10 kΩ
-    Status.MARGINAL: "#f39c12",   # orange — 10–20 kΩ
-    Status.BAD:      "#e74c3c",   # red    — > 20 kΩ
-    Status.OPEN:     "#ffffff",   # white  — < 100 Ω (open circuit)
-    None:            "#aaaaaa",   # grey   — no data yet
+    Status.GOOD:     "#2ecc71",   # green       — < 10 kΩ
+    Status.MARGINAL: "#f39c12",   # orange      — 10–20 kΩ
+    Status.BAD:      "#e74c3c",   # red         — > 20 kΩ
+    Status.SHORT:    "#ffffff",   # white       — < 100 Ω, shorted to adjacent electrode or ref
+    Status.OPEN:     "#85c1e9",   # light blue  — SDK sentinel, electrode not gelled
+    Status.ERROR:    "#000000",   # black       — large value, not the known sentinel
+    None:            "#aaaaaa",   # grey        — no data yet
 }
 
 # Text colour on each background for legibility
@@ -34,7 +36,9 @@ _TEXT_COLOURS: dict[Status | None, str] = {
     Status.GOOD:     "#ffffff",
     Status.MARGINAL: "#000000",
     Status.BAD:      "#ffffff",
-    Status.OPEN:     "#888888",   # mid-grey label on white
+    Status.SHORT:    "#888888",   # mid-grey on white
+    Status.OPEN:     "#1a5276",   # dark blue on light blue
+    Status.ERROR:    "#ffffff",   # white on black
     None:            "#000000",
 }
 
@@ -42,14 +46,25 @@ _LEGEND_ENTRIES = [
     (Status.GOOD,     "Good",     "< 10 kΩ"),
     (Status.MARGINAL, "Marginal", "10–20 kΩ"),
     (Status.BAD,      "Bad",      "> 20 kΩ"),
-    (Status.OPEN,     "Open",     "< 100 Ω"),
+    (Status.SHORT,    "Short",    "< 100 Ω"),
+    (Status.OPEN,     "Open",     "no contact"),
+    (Status.ERROR,    "Error",    "≥ 1 MΩ"),
 ]
 
 
-def _format_kohm(reading: ImpedanceReading | None) -> str:
-    """Format a reading's value as e.g. '4.5K' or '30K'. Returns '' for open/no-data."""
-    if reading is None or reading.status == Status.OPEN:
+_NON_IMPEDANCE_STATUSES = {Status.SHORT, Status.OPEN, Status.ERROR}
+
+
+def _format_value(reading: ImpedanceReading | None) -> str:
+    """Return the text to draw below an electrode circle.
+
+    Impedance statuses show a kΩ value (e.g. '4.5K'). Non-impedance statuses
+    (Short, Open, Error) show their status label. Returns '' for no-data.
+    """
+    if reading is None:
         return ""
+    if reading.status in _NON_IMPEDANCE_STATUSES:
+        return reading.status.value.capitalize()
     return f"{reading.kohm:.1f}K"
 
 
@@ -162,8 +177,8 @@ class HeadWidget(QWidget):
             label_rect = QRect(px - elec_r, py - elec_r, 2 * elec_r, 2 * elec_r)
             painter.drawText(label_rect, Qt.AlignmentFlag.AlignCenter, elec.label)
 
-            # kΩ value below the circle (not shown for OPEN or no-data)
-            val_text = _format_kohm(reading)
+            # kΩ value or status label below the circle
+            val_text = _format_value(reading)
             if val_text:
                 painter.setFont(value_font)
                 painter.setPen(QColor("#333333"))

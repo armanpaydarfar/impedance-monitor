@@ -8,8 +8,10 @@ SDK constraints enforced here:
   - Only one stream may be active at a time.
   - stop() calls close_stream, close_amplifier, and eemagine_sdk_exit() in that order.
   - The first getData() result after stream open is discarded (issue 3162).
-  - Values below 100 Ω are classified as OPEN circuit, not GOOD (issue 3165 —
-    handled in processing/thresholds.py, but documented here for traceability).
+  - Values below 100 Ω are classified as SHORT (issue 3165 — likely shorted to an
+    adjacent electrode or reference; handled in processing/thresholds.py).
+  - The SDK sentinel 0xFFFFFFFF is classified as OPEN (electrode not gelled).
+  - Other values ≥ 1 MΩ that are not the sentinel are classified as ERROR.
 """
 
 import ctypes
