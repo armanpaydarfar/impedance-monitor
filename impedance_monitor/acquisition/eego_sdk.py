@@ -22,42 +22,42 @@ from .base import AcquisitionBackend
 
 logger = logging.getLogger(__name__)
 
-# --------------------------------------------------------------------------
-# SDK path resolution order (first found wins)
-# --------------------------------------------------------------------------
-_SDK_SEARCH_PATHS = [
-    # Resolved at call time so EEGO_SDK_PATH is read from the live environment
-    None,  # placeholder for EEGO_SDK_PATH — resolved in resolve_sdk_path()
-    "/home/arman-admin/opt/lsl-eego/libeego-SDK.so",
-    "/opt/lsl-eego/libeego-SDK.so",
-    "libeego-SDK.so",  # relies on LD_LIBRARY_PATH or system library path
-]
-
-
 def resolve_sdk_path(explicit: str | None = None) -> str:
     """Return the path to libeego-SDK.so, searching in priority order.
 
     Priority:
       1. explicit argument (from --sdk-path CLI arg)
       2. EEGO_SDK_PATH environment variable
-      3. /home/arman-admin/opt/lsl-eego/libeego-SDK.so
-      4. /opt/lsl-eego/libeego-SDK.so
-      5. libeego-SDK.so  (via LD_LIBRARY_PATH / system)
+      3. ~/.config/impedance-monitor/sdk_path (written by install.sh)
+      4. ~/opt/lsl-eego/libeego-SDK.so
+      5. /opt/lsl-eego/libeego-SDK.so
+      6. libeego-SDK.so  (via LD_LIBRARY_PATH / system)
 
     Raises FileNotFoundError if none resolves.
     """
     import os
 
+    def _resolve_dir(p: str) -> str:
+        """If p is a directory, return the path with the SDK filename appended."""
+        return str(Path(p) / "libeego-SDK.so") if Path(p).is_dir() else p
+
     candidates: list[str] = []
     if explicit:
-        candidates.append(explicit)
+        candidates.append(_resolve_dir(explicit))
 
     env_path = os.environ.get("EEGO_SDK_PATH", "")
     if env_path:
-        candidates.append(env_path)
+        candidates.append(_resolve_dir(env_path))
+
+    # Path saved by install.sh when the user provided a non-default SDK location
+    config_file = Path.home() / ".config" / "impedance-monitor" / "sdk_path"
+    if config_file.is_file():
+        saved = config_file.read_text().strip()
+        if saved:
+            candidates.append(saved)
 
     candidates.extend([
-        "/home/arman-admin/opt/lsl-eego/libeego-SDK.so",
+        str(Path.home() / "opt" / "lsl-eego" / "libeego-SDK.so"),
         "/opt/lsl-eego/libeego-SDK.so",
         "libeego-SDK.so",
     ])

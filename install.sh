@@ -86,6 +86,10 @@ if [ -z "$SDK_FOUND" ]; then
     if [ -t 0 ]; then
         # Running interactively — ask the user
         read -rp "       Enter full path to libeego-SDK.so (or press Enter to abort): " USER_SDK_PATH
+        # Accept a directory — look for the library inside it
+        if [ -n "$USER_SDK_PATH" ] && [ -d "$USER_SDK_PATH" ]; then
+            USER_SDK_PATH="${USER_SDK_PATH%/}/libeego-SDK.so"
+        fi
         if [ -n "$USER_SDK_PATH" ] && [ -f "$USER_SDK_PATH" ]; then
             SDK_FOUND="$USER_SDK_PATH"
         else
@@ -104,6 +108,13 @@ if [ -z "$SDK_FOUND" ]; then
     fi
 fi
 _ok "SDK found: $SDK_FOUND"
+
+# Persist the resolved SDK path so impedance-monitor can find it on future runs
+# without requiring EEGO_SDK_PATH to be set in the shell environment.
+CONFIG_DIR="$HOME/.config/impedance-monitor"
+mkdir -p "$CONFIG_DIR"
+echo "$SDK_FOUND" > "$CONFIG_DIR/sdk_path"
+_ok "SDK path saved: $CONFIG_DIR/sdk_path"
 echo ""
 
 # --------------------------------------------------------------------------
