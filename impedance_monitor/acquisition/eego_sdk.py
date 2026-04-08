@@ -37,31 +37,41 @@ def resolve_sdk_path(explicit: str | None = None) -> str:
     Priority:
       1. explicit argument (from --sdk-path CLI arg)
       2. EEGO_SDK_PATH environment variable
-      3. Platform-specific fallback paths:
-           Linux:   /home/{user}/opt/lsl-eego/libeego-SDK.so
+      3. ~/.config/impedance-monitor/sdk_path (written by install.py)
+      4. Platform-specific fallback paths:
+           Linux:   ~/opt/lsl-eego/libeego-SDK.so
                     /opt/lsl-eego/libeego-SDK.so
-           Windows: %USERPROFILE%\\opt\\lsl-eego\\eego-SDK.dll
-      4. Bare library name via LD_LIBRARY_PATH (Linux) or PATH (Windows)
+           Windows: ~/opt/lsl-eego/eego-SDK.dll
+      5. Bare library name via LD_LIBRARY_PATH (Linux) or PATH (Windows)
 
     Raises FileNotFoundError if none resolves.
     """
     import os
 
+    def _resolve_dir(p: str) -> str:
+        """If p is a directory, return the path with the SDK filename appended."""
+        return str(Path(p) / _SDK_LIB) if Path(p).is_dir() else p
+
     candidates: list[str] = []
     if explicit:
-        candidates.append(explicit)
+        candidates.append(_resolve_dir(explicit))
 
     env_path = os.environ.get("EEGO_SDK_PATH", "")
     if env_path:
-        candidates.append(env_path)
+        candidates.append(_resolve_dir(env_path))
+
+    # Path saved by install.py when the user provided a non-default SDK location
+    config_file = Path.home() / ".config" / "impedance-monitor" / "sdk_path"
+    if config_file.is_file():
+        saved = config_file.read_text().strip()
+        if saved:
+            candidates.append(saved)
 
     if sys.platform == "win32":
-        user_profile = os.environ.get("USERPROFILE", "")
-        if user_profile:
-            candidates.append(str(Path(user_profile) / "opt" / "lsl-eego" / _SDK_LIB))
+        candidates.append(str(Path.home() / "opt" / "lsl-eego" / _SDK_LIB))
     else:
         candidates.extend([
-            f"/home/{os.environ.get('USER', '')}/opt/lsl-eego/{_SDK_LIB}",
+            str(Path.home() / "opt" / "lsl-eego" / _SDK_LIB),
             f"/opt/lsl-eego/{_SDK_LIB}",
         ])
 

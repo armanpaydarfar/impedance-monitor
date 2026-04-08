@@ -80,6 +80,20 @@ def _sdk_candidates() -> list[str]:
     return candidates
 
 
+def _resolve_dir(p: str) -> str:
+    """If p is a directory, return the path with the SDK filename appended."""
+    return str(Path(p) / SDK_LIB) if Path(p).is_dir() else p
+
+
+def _save_sdk_path(sdk_path: str) -> None:
+    """Persist the resolved SDK path so future runs can find it without EEGO_SDK_PATH."""
+    config_dir = Path.home() / ".config" / "impedance-monitor"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / "sdk_path"
+    config_file.write_text(sdk_path)
+    _ok("SDK path saved:", str(config_file))
+
+
 def check_sdk() -> None:
     print("--- Locating ANT Neuro SDK ---")
     candidates = _sdk_candidates()
@@ -87,6 +101,7 @@ def check_sdk() -> None:
     for p in candidates:
         if Path(p).is_file():
             _ok("SDK found:", p)
+            _save_sdk_path(p)
             print()
             return
 
@@ -98,8 +113,11 @@ def check_sdk() -> None:
 
     if sys.stdin.isatty():
         user_path = input(f"       Enter full path to {SDK_LIB} (or press Enter to abort): ").strip()
+        if user_path:
+            user_path = _resolve_dir(user_path)
         if user_path and Path(user_path).is_file():
             _ok("SDK found:", user_path)
+            _save_sdk_path(user_path)
             print()
             return
         if user_path:
