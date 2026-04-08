@@ -6,8 +6,9 @@ class MockBackend(AcquisitionBackend):
     """Generates random-walk impedance values for all channels in a given cap layout.
 
     Values drift slowly to simulate gel drying / cap settling. The initial
-    distribution covers all four status bands so every display state is exercised
-    without hardware.
+    distribution covers SHORT, GOOD, MARGINAL, and BAD bands. OPEN (SDK sentinel)
+    and ERROR are not exercised — those require specific raw values the random walk
+    will not naturally produce.
     """
 
     def __init__(self, cap_layout, seed: int | None = None):
@@ -18,9 +19,9 @@ class MockBackend(AcquisitionBackend):
 
     def start(self) -> None:
         # Seed each channel with a starting value drawn from across the full range.
-        # The distribution intentionally spans OPEN, GOOD, MARGINAL, and BAD bands.
+        # The distribution intentionally spans SHORT, GOOD, MARGINAL, and BAD bands.
         band_starts = [
-            (0, 80),            # OPEN: < 100 Ω
+            (0, 80),            # SHORT: < 100 Ω
             (200, 9_800),       # GOOD: 100–10000 Ω
             (10_000, 19_800),   # MARGINAL: 10000–20000 Ω
             (20_000, 40_000),   # BAD: ≥ 20000 Ω
