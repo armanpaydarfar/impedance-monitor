@@ -34,7 +34,7 @@ def _parse_args(argv=None) -> argparse.Namespace:
         "--sdk-path",
         default=None,
         metavar="PATH",
-        help="Explicit path to libeego-SDK.so",
+        help="Explicit path to the SDK library (libeego-SDK.so on Linux, eego-SDK.dll on Windows)",
     )
     parser.add_argument(
         "--poll-ms",
@@ -115,12 +115,13 @@ def _run_check(sdk_path_arg: str | None) -> int:
         except OSError as exc:
             _fail("SDK loadable:", str(exc))
 
-    # udev rule
-    udev_path = Path("/etc/udev/rules.d/90-eego.rules")
-    if udev_path.exists():
-        _ok("udev rule:", str(udev_path))
-    else:
-        _fail("udev rule:", f"{udev_path} not found — run install.sh or copy 90-eego.rules manually")
+    # udev rule (Linux only — not applicable on Windows)
+    if sys.platform != "win32":
+        udev_path = Path("/etc/udev/rules.d/90-eego.rules")
+        if udev_path.exists():
+            _ok("udev rule:", str(udev_path))
+        else:
+            _fail("udev rule:", f"{udev_path} not found — run install.py or copy 90-eego.rules manually")
 
     # PySide6
     try:

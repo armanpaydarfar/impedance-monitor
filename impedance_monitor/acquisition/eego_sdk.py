@@ -1,8 +1,12 @@
-"""ctypes binding to libeego-SDK.so for live impedance acquisition.
+"""ctypes binding to the ANT Neuro eego SDK for live impedance acquisition.
 
-This is the only file that may import ctypes or load libeego-SDK.so.
+This is the only file that may import ctypes or load the SDK library.
 No other module touches the SDK. This module must never be imported in mock mode —
 the acquisition backend is injected at runtime.
+
+SDK library filename differs by platform:
+  - Linux:   libeego-SDK.so
+  - Windows: eego-SDK.dll
 
 SDK constraints enforced here:
   - Only one stream may be active at a time.
@@ -16,22 +20,29 @@ SDK constraints enforced here:
 
 import ctypes
 import logging
+import sys
 from pathlib import Path
 
 from .base import AcquisitionBackend
 
 logger = logging.getLogger(__name__)
 
+# SDK library filename differs by platform (ANT Neuro naming, not a typo).
+_SDK_LIB = "eego-SDK.dll" if sys.platform == "win32" else "libeego-SDK.so"
+
+
 def resolve_sdk_path(explicit: str | None = None) -> str:
-    """Return the path to libeego-SDK.so, searching in priority order.
+    """Return the path to the eego SDK library, searching in priority order.
 
     Priority:
       1. explicit argument (from --sdk-path CLI arg)
       2. EEGO_SDK_PATH environment variable
-      3. ~/.config/impedance-monitor/sdk_path (written by install.sh)
-      4. ~/opt/lsl-eego/libeego-SDK.so
-      5. /opt/lsl-eego/libeego-SDK.so
-      6. libeego-SDK.so  (via LD_LIBRARY_PATH / system)
+      3. ~/.config/impedance-monitor/sdk_path (written by install.py)
+      4. Platform-specific fallback paths:
+           Linux:   ~/opt/lsl-eego/libeego-SDK.so
+                    /opt/lsl-eego/libeego-SDK.so
+           Windows: ~/opt/lsl-eego/eego-SDK.dll
+      5. Bare library name via LD_LIBRARY_PATH (Linux) or PATH (Windows)
 
     Raises FileNotFoundError if none resolves.
     """
@@ -39,7 +50,7 @@ def resolve_sdk_path(explicit: str | None = None) -> str:
 
     def _resolve_dir(p: str) -> str:
         """If p is a directory, return the path with the SDK filename appended."""
-        return str(Path(p) / "libeego-SDK.so") if Path(p).is_dir() else p
+        return str(Path(p) / _SDK_LIB) if Path(p).is_dir() else p
 
     candidates: list[str] = []
     if explicit:
@@ -49,21 +60,26 @@ def resolve_sdk_path(explicit: str | None = None) -> str:
     if env_path:
         candidates.append(_resolve_dir(env_path))
 
-    # Path saved by install.sh when the user provided a non-default SDK location
+    # Path saved by install.py when the user provided a non-default SDK location
     config_file = Path.home() / ".config" / "impedance-monitor" / "sdk_path"
     if config_file.is_file():
         saved = config_file.read_text().strip()
         if saved:
             candidates.append(saved)
 
-    candidates.extend([
-        str(Path.home() / "opt" / "lsl-eego" / "libeego-SDK.so"),
-        "/opt/lsl-eego/libeego-SDK.so",
-        "libeego-SDK.so",
-    ])
+    if sys.platform == "win32":
+        candidates.append(str(Path.home() / "opt" / "lsl-eego" / _SDK_LIB))
+    else:
+        candidates.extend([
+            str(Path.home() / "opt" / "lsl-eego" / _SDK_LIB),
+            f"/opt/lsl-eego/{_SDK_LIB}",
+        ])
+
+    # Bare name — relies on LD_LIBRARY_PATH (Linux) or PATH (Windows)
+    candidates.append(_SDK_LIB)
 
     for p in candidates:
-        if p == "libeego-SDK.so":
+        if p == _SDK_LIB:
             # System-path resolution — try loading and catch OSError
             try:
                 ctypes.CDLL(p)
@@ -75,7 +91,7 @@ def resolve_sdk_path(explicit: str | None = None) -> str:
 
     checked = "\n  ".join(candidates)
     raise FileNotFoundError(
-        f"libeego-SDK.so not found. Paths checked:\n  {checked}\n"
+        f"{_SDK_LIB} not found. Paths checked:\n  {checked}\n"
         "Set EEGO_SDK_PATH or use --sdk-path to specify the location."
     )
 
@@ -138,14 +154,14 @@ def _check(ret: int, sdk: ctypes.CDLL, context: str) -> int:
 # --------------------------------------------------------------------------
 
 class EegoSDKBackend(AcquisitionBackend):
-    """Live impedance acquisition via ctypes binding to libeego-SDK.so.
+    """Live impedance acquisition via ctypes binding to the eego SDK library.
 
     Parameters
     ----------
     cap_layout:
         CapLayout instance whose electrode list determines the channel→label mapping.
     sdk_path:
-        Resolved path to libeego-SDK.so (use resolve_sdk_path() before constructing).
+        Resolved path to the SDK library (use resolve_sdk_path() before constructing).
     """
 
     def __init__(self, cap_layout, sdk_path: str) -> None:

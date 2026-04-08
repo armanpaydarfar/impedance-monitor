@@ -8,7 +8,9 @@ Before starting any session, read the implementation plan:
 
 ## Platform
 
-- **Linux only.** No Windows-specific code. No platform guards needed.
+- **Linux and Windows.** `sys.platform` guards exist in `acquisition/eego_sdk.py`
+  (SDK filename and fallback paths) and `main.py` (udev check). Keep platform guards
+  confined to those two files — all other modules are platform-neutral.
 
 ---
 
@@ -18,7 +20,8 @@ These rules apply permanently — in every session, for every task including bug
 and new features.
 
 - `acquisition/eego_sdk.py` is the **only** file that may import `ctypes` or load
-  `libeego-SDK.so`. No other module touches the SDK.
+  the SDK library (`libeego-SDK.so` on Linux, `eego-SDK.dll` on Windows). No other
+  module touches the SDK.
 - `eego_sdk.py` must never be imported in mock mode. The acquisition backend is
   injected at runtime — keep that boundary clean.
 - The SDK allows only **one stream active at a time.** `stop()` must call
@@ -122,14 +125,14 @@ and new features.
 
 - The conda environment is named `lsl`, Python 3.12.
 - `pyproject.toml` is the reference for dependencies. Do not introduce packages that
-  cannot be installed on Linux via pip or conda.
+  cannot be installed on Linux and Windows via pip or conda.
 
 ---
 
 ## External System Dependencies
 
-`libeego-SDK.so` is not managed by conda and will not appear in `pyproject.toml`.
-It must be installed separately (obtained from ANT Neuro) and locatable via the SDK
-path resolution order defined in the implementation plan. `install.sh` handles this
-for new users. If the SDK is not found, the tool must fail with a clear message — not
-silently fall back to mock mode.
+The SDK library (`libeego-SDK.so` on Linux, `eego-SDK.dll` on Windows) is not managed
+by conda and will not appear in `pyproject.toml`. It must be installed separately
+(obtained from ANT Neuro) and locatable via the SDK path resolution order defined in
+the implementation plan. `install.py` handles this for new users. If the SDK is not
+found, the tool must fail with a clear message — not silently fall back to mock mode.

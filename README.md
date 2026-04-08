@@ -5,10 +5,11 @@ in real time using a PySide6 GUI with a colour-coded head topomap.
 
 ## Requirements
 
-- Linux
+- Linux or Windows 10/11
 - Python 3.10+
-- `libeego-SDK.so` from ANT Neuro (not managed by pip — see Installation)
-- udev rule `90-eego.rules` installed for unprivileged USB access
+- ANT Neuro eego SDK shared library — `libeego-SDK.so` (Linux) or `eego-SDK.dll` (Windows), obtained from ANT Neuro; not managed by pip
+- **Linux only:** udev rule `90-eego.rules` for unprivileged USB access
+- **Windows only:** ANT Neuro USB driver installed separately
 
 PySide6 is the only pip dependency and is installed automatically.
 
@@ -19,15 +20,15 @@ Activate a Python 3.10+ environment, then run the installer from the repo root:
 ```bash
 conda activate <your-env>   # or: source .venv/bin/activate, etc.
 cd /path/to/impedance-monitor
-./install.sh
+python install.py
 ```
 
-`install.sh` installs into whatever Python is currently active — any environment
-type, any name. It will:
+`install.py` detects the platform and installs into whatever Python is currently active.
+It will:
 
 1. Verify Python 3.10+ is active (fails with instructions if not)
-2. Locate `libeego-SDK.so` (fails with instructions if not found)
-3. Install the udev rule for unprivileged USB access (requires `sudo`)
+2. Locate the SDK library (fails with instructions if not found)
+3. **Linux only:** install the udev rule for unprivileged USB access (requires `sudo`)
 4. Run `pip install -e .` — installs PySide6 and registers the `impedance-monitor` command
 5. Verify the full setup with `impedance-monitor --check`
 
@@ -36,15 +37,25 @@ type, any name. It will:
 ```bash
 conda create -n <your-env> python=3.12
 conda activate <your-env>
-./install.sh
+python install.py
 ```
 
 **Don't have conda?** Install
 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) first, then follow
 the steps above.
 
-**Upgrading?** Re-running `./install.sh` is safe — it will upgrade PySide6 if the
-installed version no longer satisfies the requirement and reinstall the package.
+**SDK not in a standard location?** Set `EEGO_SDK_PATH` before running the installer:
+
+```bash
+# Linux
+export EEGO_SDK_PATH=/path/to/libeego-SDK.so
+
+# Windows
+set EEGO_SDK_PATH=C:\path\to\eego-SDK.dll
+```
+
+**Upgrading?** Re-running `python install.py` is safe — it will reinstall the package
+and re-verify the setup.
 
 ## Usage
 
@@ -58,8 +69,11 @@ impedance-monitor --mode mock --cap ca209
 # Pre-populate subject and data directory (editable in the GUI before starting)
 impedance-monitor --mode live --cap ca209 --subject PILOT007 --data-dir /data/eeg
 
-# Custom SDK location
+# Custom SDK location (Linux)
 impedance-monitor --mode live --sdk-path /opt/antneuro/libeego-SDK.so
+
+# Custom SDK location (Windows)
+impedance-monitor --mode live --sdk-path C:\ANT\eego-SDK.dll
 
 # Verify setup (no hardware connection opened)
 impedance-monitor --check
