@@ -66,7 +66,8 @@ class SessionLog:
             f"[{counts[Status.GOOD]}G "
             f"{counts[Status.MARGINAL]}M "
             f"{counts[Status.BAD]}B "
-            f"{counts[Status.OPEN]}O]"
+            f"{counts[Status.OPEN]}O "
+            f"{counts[Status.DRY]}D]"
         )
         logging.info("Readings: %s  %s", " ".join(parts), summary)
 

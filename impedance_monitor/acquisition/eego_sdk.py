@@ -14,8 +14,8 @@ SDK constraints enforced here:
   - The first getData() result after stream open is discarded (issue 3162).
   - Values below 100 Ω are classified as SHORT (issue 3165 — likely shorted to an
     adjacent electrode or reference; handled in processing/thresholds.py).
-  - The SDK sentinel 0xFFFFFFFF is classified as OPEN (electrode not gelled).
-  - Other values ≥ 1 MΩ that are not the sentinel are classified as ERROR.
+  - The SDK sentinel 0xFFFFFFFF is classified as OPEN (cap not seated / electrode lifted).
+  - Values ≥ 1 MΩ that are not the sentinel are classified as DRY (cap on, electrode ungelled).
 """
 
 import ctypes

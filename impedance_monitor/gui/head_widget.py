@@ -9,7 +9,8 @@ where centre and radius are recomputed from widget dimensions on every paintEven
 
 Each electrode is drawn as a colour-coded circle with the channel label centred
 inside and a value drawn just below the circle. Impedance statuses show a kΩ
-value; non-impedance statuses (Short, Open, Error) show their status label.
+value; non-impedance statuses (Short, Open) show their status label; Dry shows
+'>1MΩ' to indicate the electrode needs gel.
 """
 
 import math
@@ -26,8 +27,8 @@ _STATUS_COLOURS: dict[Status | None, str] = {
     Status.MARGINAL: "#f39c12",   # orange      — 10–20 kΩ
     Status.BAD:      "#e74c3c",   # red         — > 20 kΩ
     Status.SHORT:    "#ffffff",   # white       — < 100 Ω, shorted to adjacent electrode or ref
-    Status.OPEN:     "#85c1e9",   # light blue  — SDK sentinel, electrode not gelled
-    Status.ERROR:    "#000000",   # black       — large value, not the known sentinel
+    Status.OPEN:     "#85c1e9",   # light blue  — SDK sentinel, cap not seated / electrode lifted
+    Status.DRY:      "#85c1e9",   # light blue  — ≥ 1 MΩ, cap on but electrode not yet gelled
     None:            "#aaaaaa",   # grey        — no data yet
 }
 
@@ -38,7 +39,7 @@ _TEXT_COLOURS: dict[Status | None, str] = {
     Status.BAD:      "#ffffff",
     Status.SHORT:    "#888888",   # mid-grey on white
     Status.OPEN:     "#1a5276",   # dark blue on light blue
-    Status.ERROR:    "#ffffff",   # white on black
+    Status.DRY:      "#1a5276",   # dark blue on light blue
     None:            "#000000",
 }
 
@@ -48,23 +49,27 @@ _LEGEND_ENTRIES = [
     (Status.BAD,      "Bad",      "> 20 kΩ"),
     (Status.SHORT,    "Short",    "< 100 Ω"),
     (Status.OPEN,     "Open",     "no contact"),
-    (Status.ERROR,    "Error",    "≥ 1 MΩ"),
+    (Status.DRY,      "Dry",      "≥ 1 MΩ, needs gel"),
 ]
 
 
-_NON_IMPEDANCE_STATUSES = {Status.SHORT, Status.OPEN, Status.ERROR}
+_NON_IMPEDANCE_STATUSES = {Status.SHORT, Status.OPEN}
 
 
 def _format_value(reading: ImpedanceReading | None) -> str:
     """Return the text to draw below an electrode circle.
 
     Impedance statuses show a kΩ value (e.g. '4.5K'). Non-impedance statuses
-    (Short, Open, Error) show their status label. Returns '' for no-data.
+    (Short, Open) show their status label. Dry shows '>1MΩ' to indicate the
+    electrode needs gel without displaying a misleadingly large number.
+    Returns '' for no-data.
     """
     if reading is None:
         return ""
     if reading.status in _NON_IMPEDANCE_STATUSES:
         return reading.status.value.capitalize()
+    if reading.status is Status.DRY:
+        return ">1MΩ"
     return f"{reading.kohm:.1f}K"
 
 

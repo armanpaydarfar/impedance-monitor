@@ -7,8 +7,8 @@ class Status(Enum):
     MARGINAL = "marginal"  # 10–20 kΩ (exclusive lower bound)
     BAD = "bad"            # 20 kΩ – 1 MΩ
     SHORT = "short"        # < 100 Ω (issue 3165) — likely shorted to adjacent electrode or reference
-    OPEN = "open"          # SDK no-contact sentinel (0xFFFFFFFF) — electrode not gelled
-    ERROR = "error"        # ≥ 1 MΩ, not the known sentinel — likely an SDK error code
+    OPEN = "open"          # SDK no-contact sentinel (0xFFFFFFFF) — cap not seated / electrode lifted
+    DRY = "dry"            # ≥ 1 MΩ, non-sentinel — cap on but electrode not yet gelled
 
 
 GOOD_THRESHOLD_OHM = 10_000
@@ -16,8 +16,8 @@ MARGINAL_THRESHOLD_OHM = 20_000
 # SDK returns 0xFFFFFFFF (4 294 967 295 Ω) as the no-contact sentinel for
 # ungelled / lifted electrodes. This specific value is classified as OPEN.
 _SDK_OPEN_SENTINEL = 0xFFFFFFFF
-# Values ≥ 1 MΩ that are not the known sentinel are classified as ERROR —
-# they likely represent an SDK error code that survived conversion to float.
+# Values ≥ 1 MΩ that are not the sentinel are classified as DRY —
+# the cap is seated but the electrode has not yet been gelled.
 OPEN_CIRCUIT_CEILING_OHM = 1_000_000
 
 # Near-zero values (< 100 Ω) are classified as OPEN per SDK issue 3165 (shorted /
@@ -40,8 +40,8 @@ def classify(label: str, ohm: float) -> ImpedanceReading:
     """Classify a single channel impedance value.
 
     Three abnormal conditions, checked in priority order:
-      - == 0xFFFFFFFF: SDK no-contact sentinel — OPEN (electrode not gelled)
-      - >= 1 MΩ (but not sentinel): likely an SDK error code — ERROR
+      - == 0xFFFFFFFF: SDK no-contact sentinel — OPEN (cap not seated / electrode lifted)
+      - >= 1 MΩ (but not sentinel): dry electrode, cap on but ungelled — DRY
       - < 100 Ω: near-zero (SDK issue 3165) — SHORT (shorted to adjacent electrode or ref)
 
     Boundary values are inclusive of the higher band:
@@ -51,7 +51,7 @@ def classify(label: str, ohm: float) -> ImpedanceReading:
     if ohm == _SDK_OPEN_SENTINEL:
         status = Status.OPEN
     elif ohm >= OPEN_CIRCUIT_CEILING_OHM:
-        status = Status.ERROR
+        status = Status.DRY
     elif ohm < OPEN_CIRCUIT_FLOOR_OHM:
         status = Status.SHORT
     elif ohm < GOOD_THRESHOLD_OHM:

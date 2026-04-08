@@ -59,14 +59,14 @@ class TestClassify:
         r = classify("Cz", OPEN_CIRCUIT_CEILING_OHM - 1)
         assert r.status == Status.BAD
 
-    def test_error_at_ceiling(self):
-        # ≥ 1 MΩ but not the known sentinel → ERROR
+    def test_dry_at_ceiling(self):
+        # ≥ 1 MΩ but not the known sentinel → DRY (cap on, electrode ungelled)
         r = classify("Cz", OPEN_CIRCUIT_CEILING_OHM)
-        assert r.status == Status.ERROR
+        assert r.status == Status.DRY
 
-    def test_error_large_non_sentinel(self):
+    def test_dry_large_non_sentinel(self):
         r = classify("Cz", 2_000_000.0)
-        assert r.status == Status.ERROR
+        assert r.status == Status.DRY
 
     def test_open_sdk_sentinel(self):
         # 0xFFFFFFFF — SDK no-contact sentinel for ungelled / not-placed electrodes
