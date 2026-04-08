@@ -67,14 +67,8 @@ def _sdk_candidates() -> list[str]:
     if env_path:
         candidates.append(env_path)
 
-    if sys.platform == "win32":
-        user_profile = os.environ.get("USERPROFILE", "")
-        if user_profile:
-            candidates.append(str(Path(user_profile) / "opt" / "lsl-eego" / SDK_LIB))
-    else:
-        user = os.environ.get("USER", "")
-        if user:
-            candidates.append(f"/home/{user}/opt/lsl-eego/{SDK_LIB}")
+    candidates.append(str(Path.home() / "opt" / "lsl-eego" / SDK_LIB))
+    if sys.platform != "win32":
         candidates.append(f"/opt/lsl-eego/{SDK_LIB}")
 
     return candidates
