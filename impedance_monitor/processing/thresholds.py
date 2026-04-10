@@ -3,16 +3,16 @@ from enum import Enum
 
 
 class Status(Enum):
-    GOOD = "good"          # < 10 kΩ
-    MARGINAL = "marginal"  # 10–20 kΩ (exclusive lower bound)
-    BAD = "bad"            # 20 kΩ – 1 MΩ
+    GOOD = "good"          # < 50 kΩ
+    MARGINAL = "marginal"  # 50–200 kΩ (exclusive lower bound)
+    BAD = "bad"            # 200 kΩ – 1 MΩ
     SHORT = "short"        # < 100 Ω (issue 3165) — likely shorted to adjacent electrode or reference
     OPEN = "open"          # SDK no-contact sentinel (0xFFFFFFFF) — cap not seated / electrode lifted
     DRY = "dry"            # ≥ 1 MΩ, non-sentinel — cap on but electrode not yet gelled
 
 
-GOOD_THRESHOLD_OHM = 10_000
-MARGINAL_THRESHOLD_OHM = 20_000
+GOOD_THRESHOLD_OHM = 50_000
+MARGINAL_THRESHOLD_OHM = 200_000
 # SDK returns 0xFFFFFFFF (4 294 967 295 Ω) as the no-contact sentinel for
 # ungelled / lifted electrodes. This specific value is classified as OPEN.
 _SDK_OPEN_SENTINEL = 0xFFFFFFFF
@@ -45,8 +45,8 @@ def classify(label: str, ohm: float) -> ImpedanceReading:
       - < 100 Ω: near-zero (SDK issue 3165) — SHORT (shorted to adjacent electrode or ref)
 
     Boundary values are inclusive of the higher band:
-        exactly 10000 Ω → MARGINAL (not GOOD)
-        exactly 20000 Ω → BAD (not MARGINAL)
+        exactly 50000 Ω → MARGINAL (not GOOD)
+        exactly 200000 Ω → BAD (not MARGINAL)
     """
     if ohm == _SDK_OPEN_SENTINEL:
         status = Status.OPEN

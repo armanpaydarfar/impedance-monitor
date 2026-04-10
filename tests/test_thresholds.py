@@ -39,7 +39,7 @@ class TestClassify:
         assert r.status == Status.MARGINAL
 
     def test_marginal_midrange(self):
-        r = classify("Cz", 15000.0)
+        r = classify("Cz", 100_000.0)
         assert r.status == Status.MARGINAL
 
     def test_marginal_just_below_threshold(self):
@@ -52,7 +52,7 @@ class TestClassify:
         assert r.status == Status.BAD
 
     def test_bad_large_value(self):
-        r = classify("Cz", 50_000.0)
+        r = classify("Cz", 250_000.0)
         assert r.status == Status.BAD
 
     def test_bad_just_below_ceiling(self):
@@ -95,8 +95,8 @@ class TestClassifyAll:
         readings = {
             "Fp1": 1000.0,
             "GND": 50.0,
-            "Cz": 15000.0,
-            "O1": 25000.0,
+            "Cz": 100_000.0,
+            "O1": 250_000.0,
             "Fz": 4_294_967_295.0,
         }
         result = classify_all(readings)

@@ -16,21 +16,44 @@ value; non-impedance statuses (Short, Open) show their status label; Dry shows
 import math
 
 from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygon
+from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen, QPolygon
 from PySide6.QtWidgets import QToolTip, QWidget
 
-from ..processing.thresholds import ImpedanceReading, Status
+from ..processing.thresholds import (
+    GOOD_THRESHOLD_OHM,
+    ImpedanceReading,
+    MARGINAL_THRESHOLD_OHM,
+    Status,
+)
 
-# Colours per status
+# Colours per status.  MARGINAL uses a gradient (see _marginal_colour); the
+# value stored here is only used for the legend swatch (midpoint of the range).
 _STATUS_COLOURS: dict[Status | None, str] = {
-    Status.GOOD:     "#2ecc71",   # green       — < 10 kΩ
-    Status.MARGINAL: "#f39c12",   # orange      — 10–20 kΩ
-    Status.BAD:      "#e74c3c",   # red         — > 20 kΩ
-    Status.SHORT:    "#ffffff",   # white       — < 100 Ω, shorted to adjacent electrode or ref
-    Status.OPEN:     "#85c1e9",   # light blue  — SDK sentinel, cap not seated / electrode lifted
-    Status.DRY:      "#85c1e9",   # light blue  — ≥ 1 MΩ, cap on but electrode not yet gelled
-    None:            "#aaaaaa",   # grey        — no data yet
+    Status.GOOD:     "#2ecc71",   # green            — < 50 kΩ
+    Status.MARGINAL: "#e09e40",   # mid-orange swatch — 50–200 kΩ (gradient in practice)
+    Status.BAD:      "#e74c3c",   # red               — > 200 kΩ
+    Status.SHORT:    "#ffffff",   # white             — < 100 Ω, shorted to adjacent electrode or ref
+    Status.OPEN:     "#85c1e9",   # light blue        — SDK sentinel, cap not seated / electrode lifted
+    Status.DRY:      "#85c1e9",   # light blue        — ≥ 1 MΩ, cap on but electrode not yet gelled
+    None:            "#aaaaaa",   # grey              — no data yet
 }
+
+# Gradient endpoints for MARGINAL electrodes.  Light orange at the good
+# boundary (50 kΩ), deep amber-orange at the bad boundary (200 kΩ).  The
+# dark endpoint is deliberately amber rather than orange-red so the
+# transition from MARGINAL to BAD (red) remains visually distinct.
+_MARGINAL_LIGHT_RGB = (255, 204, 128)   # light orange  — 50 kΩ end
+_MARGINAL_DARK_RGB  = (192, 112,   0)   # deep amber    — 200 kΩ end
+
+
+def _marginal_colour(ohm: float) -> QColor:
+    """Return a colour interpolated between light and dark orange for a marginal reading."""
+    t = (ohm - GOOD_THRESHOLD_OHM) / (MARGINAL_THRESHOLD_OHM - GOOD_THRESHOLD_OHM)
+    t = max(0.0, min(1.0, t))
+    r = int(_MARGINAL_LIGHT_RGB[0] + t * (_MARGINAL_DARK_RGB[0] - _MARGINAL_LIGHT_RGB[0]))
+    g = int(_MARGINAL_LIGHT_RGB[1] + t * (_MARGINAL_DARK_RGB[1] - _MARGINAL_LIGHT_RGB[1]))
+    b = int(_MARGINAL_LIGHT_RGB[2] + t * (_MARGINAL_DARK_RGB[2] - _MARGINAL_LIGHT_RGB[2]))
+    return QColor(r, g, b)
 
 # Text colour on each background for legibility
 _TEXT_COLOURS: dict[Status | None, str] = {
@@ -44,9 +67,9 @@ _TEXT_COLOURS: dict[Status | None, str] = {
 }
 
 _LEGEND_ENTRIES = [
-    (Status.GOOD,     "Good",     "< 10 kΩ"),
-    (Status.MARGINAL, "Marginal", "10–20 kΩ"),
-    (Status.BAD,      "Bad",      "> 20 kΩ"),
+    (Status.GOOD,     "Good",     "< 50 kΩ"),
+    (Status.MARGINAL, "Marginal", "50–200 kΩ"),
+    (Status.BAD,      "Bad",      "> 200 kΩ"),
     (Status.SHORT,    "Short",    "< 100 Ω"),
     (Status.OPEN,     "Open",     "no contact"),
     (Status.DRY,      "Dry",      "≥ 1 MΩ, needs gel"),
@@ -166,7 +189,10 @@ class HeadWidget(QWidget):
         for elec in self._layout.electrodes:
             reading = self._readings.get(elec.label)
             status = reading.status if reading else None
-            bg_colour = QColor(_STATUS_COLOURS[status])
+            if status is Status.MARGINAL and reading is not None:
+                bg_colour = _marginal_colour(reading.ohm)
+            else:
+                bg_colour = QColor(_STATUS_COLOURS[status])
             text_colour = QColor(_TEXT_COLOURS[status])
 
             px, py = self._electrode_pixel(elec.x, elec.y, cx, cy, r)
@@ -215,11 +241,22 @@ class HeadWidget(QWidget):
 
         for i, (status, label, rng) in enumerate(_LEGEND_ENTRIES):
             row_y = ly + padding + i * entry_h
-            # Colour swatch (with border for white/light swatches)
-            swatch_colour = QColor(_STATUS_COLOURS[status])
             painter.setPen(QPen(QColor("#aaaaaa"), 1))
-            painter.setBrush(swatch_colour)
-            painter.drawRect(lx + padding, row_y + 3, swatch_w, entry_h - 8)
+            swatch_rect_x = lx + padding
+            swatch_rect_y = row_y + 3
+            swatch_rect_w = swatch_w
+            swatch_rect_h = entry_h - 8
+            if status is Status.MARGINAL:
+                # Gradient swatch: light orange (left) → deep amber (right)
+                grad = QLinearGradient(
+                    swatch_rect_x, 0, swatch_rect_x + swatch_rect_w, 0
+                )
+                grad.setColorAt(0.0, QColor(*_MARGINAL_LIGHT_RGB))
+                grad.setColorAt(1.0, QColor(*_MARGINAL_DARK_RGB))
+                painter.setBrush(grad)
+            else:
+                painter.setBrush(QColor(_STATUS_COLOURS[status]))
+            painter.drawRect(swatch_rect_x, swatch_rect_y, swatch_rect_w, swatch_rect_h)
             # Text
             painter.setPen(QColor("#000000"))
             painter.drawText(
