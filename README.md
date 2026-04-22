@@ -86,12 +86,13 @@ click **▶ Start** to connect to the amplifier and begin acquisition.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Mode: LIVE  Cap: CA-209  Poll: 500 ms  Subject: [____] Log: [__] │  ← config panel
-│                                                          [▶ Start]│
+│ Mode: [LIVE▼]  Cap: [CA-209▼]  Poll interval (ms): [500]        │  ← config row 1
+│ Subject: [________]  Log dir: [_____________________________]    │
+│                                            [▶ Start]  [■ Stop]   │  ← config row 2
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │              [colour-coded electrode topomap]                     │  ← head widget
-│              [label in circle, kΩ value below]                    │
+│              [label in circle, status/kΩ below]                   │
 │                                                                   │
 ├──────────────────────────────────────────────────────────────────┤
 │ Status: Connected  Battery: 85%  Poll: 500ms  Updated: 10:23:45  │  ← status bar
@@ -99,10 +100,11 @@ click **▶ Start** to connect to the amplifier and begin acquisition.
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Electrode circles** show the channel label centred inside and the impedance value
-(e.g. `4.5K`, `30K`) just below the circle. OPEN-circuit channels show white with
-no value — the colour alone signals the state. REF and GND are drawn outside the
-head outline at fixed positions.
+**Electrode circles** show the channel label centred inside and a value just below
+the circle. Channels with a measurable impedance (Good/Marginal/Bad) show the kΩ
+value (e.g. `4.5K`, `30K`). Dry channels show `>1MΩ`. Short and Open channels show
+their status label (`Short` / `Open`). REF and GND are drawn outside the head outline
+at fixed positions.
 
 **Updated timestamp** in the status bar refreshes on every successful poll, so you
 can immediately see if the display is stale.
@@ -117,15 +119,23 @@ can immediately see if the display is stale.
 
 ## Impedance thresholds
 
-| Status   | Range          | Colour |
-|----------|----------------|--------|
-| Good     | 100 Ω – 10 kΩ  | Green  |
-| Marginal | 10 – 20 kΩ     | Orange |
-| Bad      | > 20 kΩ        | Red    |
-| Open     | < 100 Ω        | White  |
+| Status   | Range               | Colour            |
+|----------|---------------------|-------------------|
+| Good     | 100 Ω – 50 kΩ       | Green             |
+| Marginal | 50 – 200 kΩ         | Orange (gradient) |
+| Bad      | 200 kΩ – 1 MΩ       | Red               |
+| Short    | < 100 Ω             | White             |
+| Open     | SDK no-contact sentinel | Light blue    |
+| Dry      | ≥ 1 MΩ, needs gel   | Light blue        |
 
-Values below 100 Ω indicate open-circuit (SDK issue 3165) and are never classified
-as good impedance. The white colour signals "no contact" unambiguously.
+**Short** (< 100 Ω): near-zero values are physically implausible for real scalp
+contact and indicate a shorted electrode (SDK issue 3165). Shown in white.
+
+**Open** (SDK sentinel 0xFFFFFFFF): the amplifier reports no contact — cap not
+seated or electrode lifted. Shown in light blue.
+
+**Dry** (≥ 1 MΩ, not sentinel): cap is seated but the electrode has not yet been
+gelled. Shown in light blue with `>1MΩ` label.
 
 ## Logging
 
@@ -142,12 +152,12 @@ electrode impedances evolved during cap setup. Example log lines:
 
 ```
 2026-04-06 10:23:45,123 [INFO] Session started. Log: /home/.../impedance_logs/...
-2026-04-06 10:23:45,456 [INFO] Acquisition started. Mode=LIVE Cap=CA-209 Poll=500ms
-2026-04-06 10:23:46,001 [INFO] Readings: FP1=4.2K FPz=3.1K ... GND=open REF=2.1K  [28G 2M 0B 2O]
-2026-04-06 10:24:46,003 [INFO] Readings: FP1=3.8K FPz=2.9K ... GND=open REF=1.9K  [30G 0M 0B 2O]
+2026-04-06 10:23:45,456 [INFO] Acquisition started. Mode=LIVE Cap=CA-209 Poll=500ms Log=/home/.../impedance_logs
+2026-04-06 10:23:46,001 [INFO] Readings: FP1=4.2K FPz=3.1K ... GND=open REF=2.1K  [28G 2M 0B 2O 0D]
+2026-04-06 10:24:46,003 [INFO] Readings: FP1=3.8K FPz=2.9K ... GND=open REF=1.9K  [30G 0M 0B 2O 0D]
 ```
 
-The `[28G 2M 0B 2O]` suffix is a count of Good / Marginal / Bad / Open channels.
+The `[28G 2M 0B 2O 0D]` suffix is a count of Good / Marginal / Bad / Open / Dry channels.
 
 ## SDK constraints
 
